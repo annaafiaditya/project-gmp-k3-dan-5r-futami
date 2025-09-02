@@ -168,9 +168,15 @@
                         </ul>
                     </li>
                     @if (auth()->user()->role === 'admin')
+                        @php
+                            $pendingVerificationCount = \App\Models\User::where('is_verified', false)->count();
+                        @endphp
                         <li class="nav-item mx-1">
-                            <a class="nav-link" href="{{ route('admin.verifikasi') }}">
+                            <a class="nav-link position-relative" href="{{ route('admin.verifikasi') }}">
                                 <i class="fas fa-user-check"></i> Verifikasi Akun
+                                @if($pendingVerificationCount > 0)
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">{{ $pendingVerificationCount }}</span>
+                                @endif
                             </a>
                         </li>
                         <li class="nav-item mx-1">

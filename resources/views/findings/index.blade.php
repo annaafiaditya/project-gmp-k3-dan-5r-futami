@@ -216,29 +216,40 @@
                     <tr class="{{ $rowClass }} table-row-hover" id="finding-{{ $finding->id }}">
                         <td class="align-middle">{{ ($findings->currentPage() - 1) * $findings->perPage() + $no + 1 }}</td>
                         <td class="align-middle">
-                            @php
-                                $imagePath = $finding->image && Storage::disk('public')->exists($finding->image) ? asset('storage/' . $finding->image) : asset('images/no-image.png');
-                            @endphp
-                            <div class="image-container" onclick="window.open('{{ $imagePath }}', '_blank')" data-bs-toggle="tooltip" title="Klik untuk membuka di tab baru" style="cursor: pointer;">
-                                <img src="{{ $imagePath }}" width="150" class="img-thumbnail before-after-img" alt="Foto Finding">
-                                <div class="image-overlay">
-                                    <i class="fas fa-external-link-alt"></i>
+                            @if ($finding->image && file_exists(storage_path('app/public/' . $finding->image)))
+                                <div class="image-container" onclick="window.open('{{ asset('storage/' . $finding->image) }}', '_blank')" data-bs-toggle="tooltip" title="Klik untuk membuka di tab baru" style="cursor: pointer;">
+                                    <img src="{{ asset('storage/' . $finding->image) }}" width="150" class="img-thumbnail before-after-img" alt="Foto Finding" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="image-overlay">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </div>
                                 </div>
-                            </div>
+                            @else
+                                <div class="d-flex align-items-center justify-content-center bg-light border rounded" style="width: 150px; height: 150px;">
+                                    <div class="text-center text-muted">
+                                        <i class="fas fa-image fa-2x mb-2"></i><br>
+                                        <small>Foto Finding</small>
+                                    </div>
+                                </div>
+                            @endif
                         </td>
                         <td class="align-middle">
                             @if ($finding->image2)
                                 <div class="d-flex flex-column align-items-center">
-                                    @php
-                                        $imagePath2 = $finding->image2 && Storage::disk('public')->exists($finding->image2) ? asset('storage/' . $finding->image2) : asset('images/no-image.png');
-                                    @endphp
-                                    <div class="image-container" onclick="window.open('{{ $imagePath2 }}', '_blank')" data-bs-toggle="tooltip" title="Klik untuk membuka di tab baru" style="cursor: pointer;">
-                                    <img src="{{ $imagePath2 }}" width="150"
-                                            class="img-thumbnail mb-2 before-after-img">
-                                        <div class="image-overlay">
-                                            <i class="fas fa-external-link-alt"></i>
+                                    @if (file_exists(storage_path('app/public/' . $finding->image2)))
+                                        <div class="image-container" onclick="window.open('{{ asset('storage/' . $finding->image2) }}', '_blank')" data-bs-toggle="tooltip" title="Klik untuk membuka di tab baru" style="cursor: pointer;">
+                                            <img src="{{ asset('storage/' . $finding->image2) }}" width="150" class="img-thumbnail mb-2 before-after-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                            <div class="image-overlay">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </div>
                                         </div>
-                                    </div>
+                                    @else
+                                        <div class="d-flex align-items-center justify-content-center bg-light border rounded mb-2" style="width: 150px; height: 150px;">
+                                            <div class="text-center text-muted">
+                                                <i class="fas fa-image fa-2x mb-2"></i><br>
+                                                <small>Foto Closing</small>
+                                            </div>
+                                        </div>
+                                    @endif
                                     @auth
                                         @if (auth()->user()->role !== 'admin' && auth()->user()->department === $finding->department && $finding->image2)
                                             <a href="{{ route('findings.editPhotoForm', $finding->id) }}?{{ http_build_query(request()->only(['year', 'week', 'jenis_audit', 'department'])) }}"
@@ -532,6 +543,26 @@
         .badge.bg-success { background-color: #28a745 !important; }
         .badge.bg-warning { background-color: #ffc107 !important; color: #212529 !important; }
         .badge.bg-primary { background-color: #007bff !important; }
+
+        /* Image fallback styling */
+        .before-after-img {
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .before-after-img:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            transform: scale(1.02);
+        }
+
+        /* Fallback image styling */
+        .bg-light.border.rounded {
+            background-color: #f8f9fa !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 8px !important;
+        }
 
         /* Toast optimization */
         .toast-container { max-width: 500px; }
