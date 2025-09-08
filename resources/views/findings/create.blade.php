@@ -58,6 +58,17 @@
                         <!-- Kriteria akan diisi dinamis oleh JS -->
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Tahun :</label>
+                        <select name="year" class="form-select" required>
+                            <option value="">Pilih Tahun</option>
+                            @foreach($years as $year)
+                                <option value="{{ $year->year }}" {{ $year->is_active ? 'selected' : '' }}>
+                                    {{ $year->year }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">Week ke - :</label>
                         <select name="week" class="form-select" required>
                             @for ($i = 1; $i <= 52; $i++)

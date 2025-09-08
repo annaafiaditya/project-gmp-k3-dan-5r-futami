@@ -3,24 +3,19 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('findings', function (Blueprint $table) {
-            $table->enum('gmp_criteria', ['Pest', 'Infrastruktur', 'Lingkungan', 'Personal Behavior', 'Cleaning'])
-                ->nullable()
-                ->change();
-        });
+        // Gunakan raw SQL untuk mengubah enum menjadi nullable
+        DB::statement("ALTER TABLE findings MODIFY COLUMN gmp_criteria ENUM('Pest', 'Infrastruktur', 'Lingkungan', 'Personal Behavior', 'Cleaning') NULL");
     }
 
     public function down(): void
     {
-        Schema::table('findings', function (Blueprint $table) {
-            $table->enum('gmp_criteria', ['Pest', 'Infrastruktur', 'Lingkungan', 'Personal Behavior', 'Cleaning'])
-                ->nullable(false)
-                ->change();
-        });
+        // Kembalikan ke not null
+        DB::statement("ALTER TABLE findings MODIFY COLUMN gmp_criteria ENUM('Pest', 'Infrastruktur', 'Lingkungan', 'Personal Behavior', 'Cleaning') NOT NULL");
     }
 }; 

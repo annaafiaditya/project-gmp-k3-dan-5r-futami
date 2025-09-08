@@ -52,10 +52,11 @@ class FindingController extends Controller
         $perPage = $request->input('per_page', 10);
         $findings = $query->paginate($perPage)->appends($request->all());
 
-        // Ambil tahun dari tabel years
-        $years = Year::where('is_active', true)
-            ->orderBy('year', 'desc')
-            ->pluck('year');
+        // Ambil semua tahun dari tabel years (tanpa filter is_active), pastikan tahun terpilih tetap ada di daftar
+        $years = Year::orderBy('year', 'desc')->pluck('year');
+        if (!$years->contains((int) $year)) {
+            $years = $years->prepend((int) $year);
+        }
 
         // Hanya hitung jika admin
         $countFindings = auth()->user()?->role === 'admin' ? Finding::count() : null;
@@ -79,7 +80,10 @@ class FindingController extends Controller
      */
     public function create()
     {
-        return view('findings.create');
+        // Ambil data tahun untuk dropdown
+        $years = Year::orderBy('year', 'desc')->get();
+        
+        return view('findings.create', compact('years'));
     }
 
     public function submit(Request $request)
@@ -92,12 +96,13 @@ class FindingController extends Controller
             'description' => 'required',
             'image' => 'nullable|image|mimes:jpeg,png,jpg',
             'week' => 'required|integer|min:1|max:52',
+            'year' => 'required|integer',
         ]);
 
         // Simpan file gambar
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('findings', 'public'); // Simpan di storage/app/public/findings
+            $imagePath = $request->file('image')->store('findings', 'public');
         }
 
         $finding = Finding::create([
@@ -108,7 +113,7 @@ class FindingController extends Controller
             'description' => $request->description,
             'image' => $imagePath,
             'week' => $request->week,
-            'year' => now()->year,
+            'year' => $request->year,
             'gmp_criteria' => $request->jenis_audit === 'GMP' ? $request->kriteria : null,
         ]);
 
@@ -126,7 +131,7 @@ class FindingController extends Controller
                 'link_url' => route('findings.index', [
                     'department' => $request->department,
                     'highlight' => $finding->id,
-                    'year' => now()->year,
+                    'year' => $request->year,
                     'week' => $request->week,
                     'jenis_audit' => $request->jenis_audit,
                 ]),
@@ -183,7 +188,6 @@ class FindingController extends Controller
         ]);
 
         if ($request->hasFile('image2')) {
-            // Hapus gambar lama kalau ada
             if ($finding->image2) {
                 Storage::delete('public/' . $finding->image2);
             }
@@ -193,11 +197,9 @@ class FindingController extends Controller
             $finding->save();
         }
 
-        // Simpan catatan_penyelesaian ke closing
         $closing = $finding->closing ?: new \App\Models\Closing();
         $closing->finding_id = $finding->id;
         $closing->catatan_penyelesaian = $request->catatan_penyelesaian ?: null;
-        // Isi kolom wajib jika closing baru
         if (!$closing->exists) {
             $closing->description = '-';
             $closing->gmp_criteria = $finding->gmp_criteria ?? 'Pest';
@@ -219,14 +221,13 @@ class FindingController extends Controller
                 'link_url' => route('findings.index', [
                     'department' => $finding->department,
                     'highlight' => $finding->id,
-                    'year' => request('year', now()->year),
+                    'year' => $finding->year,
                     'week' => request('week'),
                     'jenis_audit' => request('jenis_audit'),
                 ]),
             ]);
         }
         
-        // Redirect back to filtered page with current filters
         $redirectParams = $request->only(['year', 'week', 'jenis_audit', 'department']);
         $redirectParams['highlight'] = $finding->id;
         return redirect()->route('findings.index', $redirectParams)->with('success', $message);
@@ -236,7 +237,6 @@ class FindingController extends Controller
     {
         $finding = Finding::findOrFail($id);
 
-        // Hanya user dari departemen yang sama yang boleh mengakses form edit (bukan admin)
         if (auth()->user()->role === 'admin') {
             return redirect()->route('findings.index')
                 ->with('error', 'Admin tidak dapat mengedit foto closing');
@@ -254,7 +254,6 @@ class FindingController extends Controller
     {
         $finding = Finding::findOrFail($id);
 
-        // Cek apakah user dari departemen yang benar (bukan admin)
         if (auth()->user()->role === 'admin') {
             return redirect()->route('findings.index')
                 ->with('error', 'Admin tidak dapat mengedit foto closing');
@@ -270,24 +269,19 @@ class FindingController extends Controller
             'catatan_penyelesaian' => 'nullable|string|max:1000',
         ]);
 
-        // Update foto hanya jika ada file baru
         if ($request->hasFile('image2')) {
-            // Hapus foto lama jika ada
             if ($finding->image2) {
                 Storage::delete('public/' . $finding->image2);
             }
 
-            // Simpan foto baru
             $path = $request->file('image2')->store('closing_images', 'public');
             $finding->image2 = $path;
             $finding->save();
         }
 
-        // Simpan catatan_penyelesaian
         $closing = $finding->closing ?: new \App\Models\Closing();
         $closing->finding_id = $finding->id;
         $closing->catatan_penyelesaian = $request->catatan_penyelesaian ?: null;
-        // Isi kolom wajib jika closing baru
         if (!$closing->exists) {
             $closing->description = '-';
             $closing->gmp_criteria = $finding->gmp_criteria ?? 'Pest';
@@ -309,7 +303,6 @@ class FindingController extends Controller
             $message = 'Data berhasil diperbarui.';
         }
         
-        // Redirect back to filtered page with current filters
         $redirectParams = $request->only(['year', 'week', 'jenis_audit', 'department']);
         $redirectParams['highlight'] = $finding->id;
         return redirect()->route('findings.index', $redirectParams)->with('success', $message);
@@ -365,10 +358,9 @@ class FindingController extends Controller
 
         $finding = Finding::find($id);
 
-        // Update gambar jika ada file baru
         if ($request->hasFile('image')) {
             if ($finding->image) {
-                Storage::delete('public/' . $finding->image); // Hapus gambar lama
+                Storage::delete('public/' . $finding->image);
             }
             $imagePath = $request->file('image')->store('findings', 'public');
             $finding->image = $imagePath;
@@ -385,7 +377,6 @@ class FindingController extends Controller
             'gmp_criteria' => $request->jenis_audit === 'GMP' ? $request->kriteria : null,
         ]);
 
-        // Redirect ke halaman findings.index dengan filter sesuai input dan highlight data yang diedit
         $redirectParams = [
             'year' => $request->input('year', now()->year),
             'week' => $request->week,
@@ -412,7 +403,6 @@ class FindingController extends Controller
     {
         $finding = Finding::findOrFail($id);
         
-        // Hanya user dari departemen yang sama yang bisa menghapus foto (bukan admin)
         if (auth()->user()->role === 'admin') {
             return redirect()->route('findings.index')
                 ->with('error', 'Admin tidak dapat menghapus foto closing');
@@ -423,18 +413,15 @@ class FindingController extends Controller
                 ->with('error', 'Hanya Departemen ' . $finding->department . ' yang bisa menghapus foto');
         }
 
-        // Hapus foto after
         if ($finding->image2) {
             \Storage::delete('public/' . $finding->image2);
             $finding->image2 = null;
             $finding->save();
         }
-        // Hapus data closing jika ada
         if ($finding->closing) {
             $finding->closing->delete();
         }
         
-        // Redirect back to filtered page with current filters
         $redirectParams = request()->only(['year', 'week', 'jenis_audit', 'department']);
         $redirectParams['highlight'] = $finding->id;
         return redirect()->route('findings.index', $redirectParams)->with('success', 'Foto after & catatan berhasil dihapus.');
